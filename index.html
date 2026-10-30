@@ -1,0 +1,406 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT GARAGE</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 20px 20px 95px;
+    background: #f3f3f3;
+    color: #171717;
+    font-family: Arial, sans-serif;
+}
+
+header {
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 28px;
+}
+
+h1 { font-size: 28px; }
+.subtitle { color: #777; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+.car-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.car-card img {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    display: block;
+}
+
+.car-info { padding: 17px; }
+.car-info h2 { margin-top: 0; }
+
+.price {
+    font-size: 21px;
+    font-weight: bold;
+    margin: 12px 0;
+}
+
+button {
+    border: 0;
+    border-radius: 10px;
+    padding: 14px 18px;
+    background: #171717;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:disabled { background: #999; }
+
+.main-button { width: 100%; }
+
+.secondary {
+    background: #e5e5e5;
+    color: #171717;
+}
+
+.info-box {
+    background: white;
+    padding: 18px;
+    border-radius: 14px;
+    margin: 15px 0;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.info-row:last-child { border: none; }
+
+.balance {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 15px 0;
+}
+
+.sell-button {
+    width: 100%;
+    margin-top: 12px;
+    background: #e8e8e8;
+    color: #171717;
+}
+
+.empty {
+    color: #777;
+    padding: 20px 0;
+}
+
+nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: space-around;
+    padding: 14px 5px;
+}
+
+nav button {
+    background: transparent;
+    color: #333;
+    padding: 8px;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<header>PROJECT GARAGE</header>
+
+<main>
+
+<section id="catalog" class="page active">
+    <h1>Автосалон</h1>
+    <p class="subtitle">Выбирай автомобиль своей мечты.</p>
+    <div id="catalogCars"></div>
+</section>
+
+<section id="carPage" class="page">
+    <button class="secondary" onclick="showPage('catalog')">← Назад</button>
+    <div id="carDetails"></div>
+</section>
+
+<section id="garage" class="page">
+    <h1>Мой гараж</h1>
+    <p class="subtitle">Твои автомобили.</p>
+    <div id="garageCars"></div>
+</section>
+
+<section id="profile" class="page">
+    <h1>Мой профиль</h1>
+    <div class="info-box">
+        <p>Твой баланс:</p>
+        <div class="balance" id="profileBalance"></div>
+        <p>PROJECT GARAGE</p>
+    </div>
+    <div class="info-box">
+        <div class="info-row">
+            <span>Автомобилей</span>
+            <b id="carCount">0</b>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<nav>
+    <button onclick="showPage('catalog')">Каталог</button>
+    <button onclick="showPage('garage')">Гараж</button>
+    <button onclick="showPage('profile')">Профиль</button>
+</nav>
+
+<script>
+
+// АВТОМОБИЛИ
+const carList = [
+    {
+        id: 'bmw',
+        name: 'BMW M5 F90',
+        year: 2020,
+        engine: '4.4 V8',
+        power: 600,
+        gearbox: 'Автомат',
+        drive: 'xDrive',
+        price: 85000,
+        sell: 70000,
+        image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1000'
+    },
+    {
+        id: 'mercedes',
+        name: 'Mercedes-AMG E63 S W213',
+        year: 2020,
+        engine: '4.0 V8 Biturbo',
+        power: 612,
+        gearbox: 'Автомат',
+        drive: '4MATIC+',
+        price: 78000,
+        sell: 64000,
+        image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Mercedes-AMG_E_63_S_4MATIC%2B_%28W213%29.jpg'
+    },
+    {
+        id: 'nissan',
+        name: 'Nissan GT-R R35',
+        year: 2017,
+        engine: '3.8 V6 Biturbo',
+        power: 570,
+        gearbox: 'Автомат',
+        drive: 'AWD',
+        price: 95000,
+        sell: 80000,
+        image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Nissan_GT-R_%284BA-R35%29_front.jpg'
+    }
+];
+
+// СОХРАНЁННЫЙ БАЛАНС
+const savedBalance = localStorage.getItem('pg_balance');
+let balance = savedBalance === null ? 100000 : Number(savedBalance);
+
+// СОХРАНЁННЫЕ ПОКУПКИ
+let cars = JSON.parse(localStorage.getItem('pg_cars') || '[]');
+
+let selectedCar = null;
+
+// СОХРАНЕНИЕ
+function saveData() {
+    localStorage.setItem('pg_balance', balance);
+    localStorage.setItem('pg_cars', JSON.stringify(cars));
+}
+
+// ФОРМАТ ЦЕНЫ
+function money(value) {
+    return '$' + value.toLocaleString('en-US');
+}
+
+// ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ
+function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('active');
+    });
+
+    document.getElementById(page).classList.add('active');
+    update();
+}
+
+// КАТАЛОГ
+function renderCatalog() {
+    const container = document.getElementById('catalogCars');
+
+    container.innerHTML = carList.map(car => `
+        <div class="car-card">
+            <img src="${car.image}" alt="${car.name}">
+            <div class="car-info">
+                <h2>${car.name}</h2>
+                <div class="price">${money(car.price)}</div>
+                <button onclick="openCar('${car.id}')">
+                    Подробнее
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ОТКРЫТЬ АВТОМОБИЛЬ
+function openCar(id) {
+    selectedCar = carList.find(car => car.id === id);
+
+    if (!selectedCar) return;
+
+    const car = selectedCar;
+    const owned = cars.includes(car.id);
+
+    document.getElementById('carDetails').innerHTML = `
+        <h1>${car.name}</h1>
+
+        <div class="car-card">
+            <img src="${car.image}" alt="${car.name}">
+        </div>
+
+        <div class="info-box">
+            <div class="info-row">
+                <span>Год</span><b>${car.year}</b>
+            </div>
+            <div class="info-row">
+                <span>Двигатель</span><b>${car.engine}</b>
+            </div>
+            <div class="info-row">
+                <span>Мощность</span><b>${car.power} л.с.</b>
+            </div>
+            <div class="info-row">
+                <span>Коробка</span><b>${car.gearbox}</b>
+            </div>
+            <div class="info-row">
+                <span>Привод</span><b>${car.drive}</b>
+            </div>
+        </div>
+
+        <h2>${money(car.price)}</h2>
+
+        <button class="main-button"
+            onclick="buyCar('${car.id}')"
+            ${owned ? 'disabled' : ''}>
+            ${owned ? 'Уже в гараже' : 'Купить автомобиль'}
+        </button>
+    `;
+
+    showPage('carPage');
+}
+
+// ПОКУПКА
+function buyCar(id) {
+    const car = carList.find(c => c.id === id);
+
+    if (!car || cars.includes(id)) return;
+
+    if (balance < car.price) {
+        alert('Недостаточно средств!');
+        return;
+    }
+
+    balance -= car.price;
+    cars.push(id);
+
+    saveData();
+
+    alert('Поздравляем с покупкой ' + car.name + '!');
+    showPage('garage');
+}
+
+// ПРОДАЖА
+function sellCar(id) {
+    const car = carList.find(c => c.id === id);
+
+    if (!car || !cars.includes(id)) return;
+
+    if (!confirm('Продать ' + car.name + ' за ' + money(car.sell) + '?')) {
+        return;
+    }
+
+    balance += car.sell;
+    cars = cars.filter(carId => carId !== id);
+
+    saveData();
+
+    alert('Автомобиль продан!');
+    showPage('garage');
+}
+
+// ГАРАЖ
+function renderGarage() {
+    const container = document.getElementById('garageCars');
+
+    const ownedCars = carList.filter(car => cars.includes(car.id));
+
+    if (ownedCars.length === 0) {
+        container.innerHTML = '<p class="empty">Твой гараж пока пуст.</p>';
+        return;
+    }
+
+    container.innerHTML = ownedCars.map(car => `
+        <div class="car-card">
+            <img src="${car.image}" alt="${car.name}">
+            <div class="car-info">
+                <h2>${car.name}</h2>
+                <div class="price">${money(car.price)}</div>
+
+                <div class="info-row">
+                    <span>Год</span><b>${car.year}</b>
+                </div>
+
+                <div class="info-row">
+                    <span>Двигатель</span><b>${car.engine}</b>
+                </div>
+
+                <div class="info-row">
+                    <span>Мощность</span><b>${car.power} л.с.</b>
+                </div>
+
+                <button class="sell-button"
+                    onclick="sellCar('${car.id}')">
+                    Продать за ${money(car.sell)}
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ОБНОВЛЕНИЕ
+function update() {
+    document.getElementById('profileBalance').textContent = money(balance);
+    document.getElementById('carCount').textContent = cars.length;
+
+    renderCatalog();
+    renderGarage();
+}
+
+// ЗАПУСК
+update();
+
+</script>
+
+</body>
+</html>
